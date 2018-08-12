@@ -175,7 +175,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         cancelActionBtn.setOnClickListener(this);
 
-
     }
 
 
@@ -284,7 +283,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-
+    /**
+     * Check if the app has Location Permission. If not request permission
+     */
     private void checkLocationPermission() {
 
         Log.d(TAG, "checking permission");
@@ -302,6 +303,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
+    /**
+     * Called when the Location permission is either granted or denied
+     */
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && grantResults.length == 1
@@ -315,6 +319,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    /**
+     * This is where we finally add the geofence
+     */
     private void addGeoFence() {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -339,6 +346,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         return PendingIntent.getService(this, PENDING_INTENT_REQUEST_CODE, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
+    /**
+     * Draw a border around the target location
+     */
     private void drawBorder() {
 
         borderCircle = mMap.addCircle(new CircleOptions()
@@ -349,6 +359,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    /**
+     * Handle the bottomsheet UI after alarm is set
+     */
     private void finishAlarm() {
 
         setBtnState = 3;
@@ -359,8 +372,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    /**
+     * Add alarm to the database
+     */
     private void exportLocationAlarm() {
-
 
         LocationDetails details = new LocationDetails(destinationAddress, reqId);
 

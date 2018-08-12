@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
 
 
-    private String TAG = "Gmaps";
+    private String TAG = MainActivity.class.getSimpleName();
 
     private MySQLiteHelper msqlHelper;
 
@@ -47,7 +47,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             }
         });
+    }
 
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         displayListOfAlarms();
     }
 
@@ -94,7 +99,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             alarmList.setNestedScrollingEnabled(true);
         }
 
-
+        //Every listview should be backed by an adapter. we are backing our listview with the cursor adapter
+        //we created earlier. The cursor adapter is responsible for populating the listview with data from the database.
+        //Everytime a new data is added, it adds a new item to the list view. The layout of individual item is described in
+        //a seperate layout file.
         alarmList.setAdapter(cursorAdapter);
 
         alarmList.setOnItemClickListener(this);
@@ -106,11 +114,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         Cursor cursor = (Cursor) parent.getItemAtPosition(position);
 
-        String address = cursor.getString(cursor.getColumnIndex(""));
+        String address = cursor.getString(cursor.getColumnIndex(AlarmLocationContract.AlarmDetails.COLUMN_NAME_TARGET_ADDRESS));
 
         Intent intent1 = new Intent(MainActivity.this,MapsActivity.class);
 
-        intent1.putExtra("ADDRESS","");
+        intent1.putExtra("ADDRESS",address);
 
         startActivity(intent1);
 
