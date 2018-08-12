@@ -19,6 +19,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.NumberPicker;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.OnConnectionFailedListener,
         GoogleApiClient.ConnectionCallbacks, ResultCallback<Status>, NumberPicker.OnValueChangeListener, View.OnClickListener {
 
+    final private String TAG = MapsActivity.class.getSimpleName();
 
     private static final int PENDING_INTENT_REQUEST_CODE = 99;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 653;
@@ -55,7 +57,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private PlaceAutocompleteFragment autocompleteFragment;
 
     private GoogleMap mMap;
-    private String TAG = "Gmaps";
     private LatLng destinationCoordinates;
     private String destinationAddress;
     private int zoomLevel = 14;
@@ -89,7 +90,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     //Database support class
 
     DatabaseLayer dbLayer;
-
 
 
     @Override
@@ -261,7 +261,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .addApi(LocationServices.API)
                 .addConnectionCallbacks(this)
                 .build();
-
     }
 
 
@@ -286,25 +285,50 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
 
-    private void addGeofence() {
+    private void checkLocationPermission() {
 
-        Log.i(TAG, "addGeofence");
+        Log.d(TAG, "checking permission");
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
+            addGeoFence();
+
+        } else {
+
+            Log.d(TAG,"Requesting location permission");
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
         }
 
-        PendingResult<Status> result = LocationServices.GeofencingApi.addGeofences(googleClient, geoRequest, createGeoFencePendingIntent());
-
-        result.setResultCallback(this);
-
-        drawBorder();
-        finishAlarm();
-        exportLocationAlarm();
-
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && grantResults.length == 1
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+            Log.d(TAG,"Location Permission granted");
+            addGeoFence();
+        }else{
+            Toast.makeText(this,"Please grant Location access to set alarm",Toast.LENGTH_LONG).show();
+            Log.d(TAG,"Location Permission denied");
+        }
+    }
+
+    private void addGeoFence() {
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+            Log.d(TAG,"adding geofence");
+
+            PendingResult<Status> result = LocationServices.GeofencingApi.addGeofences(googleClient, geoRequest, createGeoFencePendingIntent());
+            result.setResultCallback(this);
+
+            drawBorder();
+            finishAlarm();
+            exportLocationAlarm();
+        }
+    }
 
     private PendingIntent createGeoFencePendingIntent() {
 
@@ -325,7 +349,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-    private void finishAlarm(){
+    private void finishAlarm() {
 
         setBtnState = 3;
         setBtn.setText("DELETE ALARM");
@@ -335,10 +359,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-    private void exportLocationAlarm(){
+    private void exportLocationAlarm() {
 
 
-        LocationDetails details = new LocationDetails(destinationAddress,reqId);
+        LocationDetails details = new LocationDetails(destinationAddress, reqId);
 
         dbLayer = new DatabaseLayer(this);
 
@@ -350,15 +374,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onResult(@NonNull Status status) {
 
-        Log.i(TAG, "Callback heard from result");
+        Log.d(TAG, "Callback heard from result");
     }
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-
-    }
-
 
     //    Set button click listener
     @Override
@@ -386,7 +403,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 geofenceList.add(fence);
 
-                Log.i(TAG, "Gonna employ a gaurd");
+                Log.d(TAG, "Gonna employ a gaurd");
 
 
                 geoRequest = new GeofencingRequest.Builder()
@@ -394,8 +411,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         .addGeofences(geofenceList)
                         .build();
 
-                Log.i(TAG, "Gonna call addGeoFence");
-                addGeofence();
+                Log.d(TAG, "Check permission to add Geofence");
+                checkLocationPermission();
 
             } else if (setBtnState == 1) {
 
@@ -429,7 +446,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
     }
-
 
 
     @Override
