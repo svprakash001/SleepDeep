@@ -52,7 +52,7 @@ public class GeoFenceTransitionService extends IntentService {
         int typeOfTransition = geofencingEvent.getGeofenceTransition();
 
 //        heck the transition type
-        if (typeOfTransition == Geofence.GEOFENCE_TRANSITION_DWELL){
+        if ((typeOfTransition == Geofence.GEOFENCE_TRANSITION_DWELL) || (typeOfTransition == Geofence.GEOFENCE_TRANSITION_ENTER)){
 
             //Get the geofence that were triggered
             List<Geofence> triggeredGeofences = geofencingEvent.getTriggeringGeofences();
@@ -83,7 +83,6 @@ public class GeoFenceTransitionService extends IntentService {
         Ringtone R = RingtoneManager.getRingtone(this,notification);
 
         R.play();
-
 
     }
 
