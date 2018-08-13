@@ -2,7 +2,7 @@
 
 Android Application to create Location based alarm. You can set a target location and the alarm will go off when you go near the location.
 
-Useful for travellers who want alarms based on a location rather than time. 
+Useful for travellers who want alarms based on a location rather than time. During a journey, we can ask the app to trigger when we reach the destination.
 
 ## Features
 
