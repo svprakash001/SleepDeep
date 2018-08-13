@@ -27,6 +27,7 @@ import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingApi;
 import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.Place;
@@ -42,6 +43,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
+import java.util.List;
 
 //TODO : Set the map to current location
 
@@ -72,12 +74,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private BottomSheetBehavior mbottomSheetBehavior;
 
+    private String called_from;
+
+
     /*Geofencing*/
     ArrayList<Geofence> geofenceList = new ArrayList<>();
     Geofence fence;
     GeofencingRequest geoRequest;
     String reqId;
 
+    //Pendingintent given to Location service on behalf of our app
+    PendingIntent pendingIntent;
 
     /*Google API client*/
     GoogleApiClient googleClient;
@@ -99,6 +106,32 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+
+        Intent intent = getIntent();
+
+        called_from = intent.getStringExtra("TYPE");
+
+        //This activity can be called from two places on MainActivity.
+        //1. By clicking '+' button
+        //2. By clicking on an item in listview
+        //If this activity was started by second method, get all the extra String, so that we can draw the circle & if the user
+        //presses 'DELETE' we can delete this item from DB
+
+        if(called_from.equals("existing_alarm")){
+
+            Log.d(TAG,"Type is existiing alarm");
+
+            reqId = intent.getStringExtra("REQ_ID");
+            radius = intent.getIntExtra("RADIUS",-1);
+            destinationAddress = intent.getStringExtra("ADDRESS");
+
+            //Reconstruct a latlng object from the strings lat and lon. First convert to double and then to LatLng
+            String lat = intent.getStringExtra("LAT");
+            String lon = intent.getStringExtra("LON");
+            Double l1 = Double.parseDouble(lat);
+            Double l2 = Double.parseDouble(lon);
+            destinationCoordinates = new LatLng(l1,l2);
+        }
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -132,6 +165,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 setBtn.setEnabled(true);
                 setBtn.setText("SET LOCATION");
+                setBtn.setTextColor(Color.parseColor("#000000"));
                 setBtnState = 1;
             }
 
@@ -172,9 +206,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
         //Cancel button listener
-
         cancelActionBtn.setOnClickListener(this);
-
     }
 
 
@@ -246,9 +278,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+        if(called_from.equals("existing_alarm")){
+            renderAlarmSetState();
+            return;
+        }
+
         // Set Default Coordinates as Bengaluru
         defaultCoordinates = new LatLng(12.9716, 77.5946);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultCoordinates, DEFAULT_ZOOM));
+
 
     }
 
@@ -296,7 +334,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         } else {
 
-            Log.d(TAG,"Requesting location permission");
+            Log.d(TAG, "Requesting location permission");
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
         }
 
@@ -311,29 +349,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && grantResults.length == 1
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-            Log.d(TAG,"Location Permission granted");
+            Log.d(TAG, "Location Permission granted");
             addGeoFence();
-        }else{
-            Toast.makeText(this,"Please grant Location access to set alarm",Toast.LENGTH_LONG).show();
-            Log.d(TAG,"Location Permission denied");
+        } else {
+            Toast.makeText(this, "Please grant Location access to set alarm", Toast.LENGTH_LONG).show();
+            Log.d(TAG, "Location Permission denied");
         }
     }
 
     /**
-     * This is where we finally add the geofence
+     * What happens when Giofence intent is delivered from Location API
      */
     private void addGeoFence() {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-            Log.d(TAG,"adding geofence");
+            Log.d(TAG, "adding geofence");
 
-            PendingResult<Status> result = LocationServices.GeofencingApi.addGeofences(googleClient, geoRequest, createGeoFencePendingIntent());
+            pendingIntent = createGeoFencePendingIntent();
+
+            PendingResult<Status> result = LocationServices.GeofencingApi.addGeofences(googleClient, geoRequest, pendingIntent);
             result.setResultCallback(this);
 
             drawBorder();
             finishAlarm();
-            exportLocationAlarm();
+            saveAlarmToDB();
         }
     }
 
@@ -366,25 +406,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         setBtnState = 3;
         setBtn.setText("DELETE ALARM");
+        setBtn.setEnabled(true);
         setBtn.setBackgroundColor(Color.parseColor("#000000"));
         setBtn.setTextColor(Color.parseColor("#ffffff"));
         mbottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
 
+        Log.d(TAG, "Hide autocomplete fragment");
+
+        findViewById(R.id.place_autocomplete_fragment).setVisibility(View.GONE);
     }
+
 
     /**
      * Add alarm to the database
      */
-    private void exportLocationAlarm() {
+    private void saveAlarmToDB() {
 
-        LocationDetails details = new LocationDetails(destinationAddress, reqId);
+        Double l1 = destinationCoordinates.latitude;
+        Double l2 = destinationCoordinates.longitude;
+        String lat = l1.toString();
+        String lon = l2.toString();
+
+        LocationDetails details = new LocationDetails(destinationAddress, reqId, radius, lat, lon);
 
         dbLayer = new DatabaseLayer(this);
 
         dbLayer.insertLocationDetails(details);
 
     }
-
 
     @Override
     public void onResult(@NonNull Status status) {
@@ -397,48 +446,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onClick(View v) {
 
 
+        //SetLocation is clicked. Change btnstate to 2
         if (v.getId() == R.id.setBtn) {
 
             Log.d(TAG, "SET BUTTON TOUCHED");
             Log.d(TAG, Integer.toString(mbottomSheetBehavior.getState()));
 
-            if (setBtnState == 2) {
-
-                Log.d(TAG, "Gonna build a fence");
-
-                reqId = String.valueOf(System.currentTimeMillis());
-
-                fence = new Geofence.Builder()
-                        .setRequestId(reqId)
-                        .setCircularRegion(destinationCoordinates.latitude, destinationCoordinates.longitude, radius)
-                        .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_DWELL | Geofence.GEOFENCE_TRANSITION_ENTER)
-                        .setLoiteringDelay(2000)
-                        .setExpirationDuration(1000000000)
-                        .build();
-
-                geofenceList.add(fence);
-
-                Log.d(TAG, "Gonna employ a gaurd");
-
-
-                geoRequest = new GeofencingRequest.Builder()
-                        .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_DWELL)
-                        .addGeofences(geofenceList)
-                        .build();
-
-                Log.d(TAG, "Check permission to add Geofence");
-                checkLocationPermission();
-
-            } else if (setBtnState == 1) {
+            if (setBtnState == 1) {
 
                 mbottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 setBtn.setText("CONFIRM ALARM LOCATION");
                 setBtnState = 2;
+
             }
-
-
+            //Location is confirmed. Proceed to build a geofence
+            else if (setBtnState == 2) {
+                buildFence();
+            }
+            //Delete alarm
+            else if (setBtnState == 3) {
+                deleteAlarm();
+            }
         }
-
 
         //Callback for radius selector field
         else if (v.getId() == R.id.radius_text) {
@@ -462,6 +491,82 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    private void buildFence(){
+
+        Log.d(TAG, "Gonna build a fence");
+
+        reqId = String.valueOf(System.currentTimeMillis());
+
+        fence = new Geofence.Builder()
+                .setRequestId(reqId)
+                .setCircularRegion(destinationCoordinates.latitude, destinationCoordinates.longitude, radius)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_DWELL | Geofence.GEOFENCE_TRANSITION_ENTER)
+                .setLoiteringDelay(2000)
+                .setExpirationDuration(1000000000)
+                .build();
+
+        geofenceList.add(fence);
+
+        Log.d(TAG, "Gonna employ a gaurd");
+
+
+        geoRequest = new GeofencingRequest.Builder()
+                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_DWELL)
+                .addGeofences(geofenceList)
+                .build();
+
+        Log.d(TAG, "Check permission to add Geofence");
+        checkLocationPermission();
+    }
+
+    private void deleteAlarm(){
+
+        Log.d(TAG,"Deleting alarm");
+
+        //Remove geofencing
+        List<String> geofences_to_remove = new ArrayList<>();
+        geofences_to_remove.add(reqId);
+        LocationServices.GeofencingApi.removeGeofences(googleClient,geofences_to_remove);
+
+        //Show place autocomplete fragment
+        findViewById(R.id.place_autocomplete_fragment).setVisibility(View.VISIBLE);
+
+        //Remove border circle
+        mMap.clear();
+
+        //Remove from DB
+        if(dbLayer == null){
+            dbLayer = new DatabaseLayer(this);
+        }
+        if(dbLayer.deleteLocation(reqId)){
+            Log.d(TAG,"Deleted successfully");
+        }else{
+            Log.d(TAG,"Err in deleting the alarm from database");
+            Toast.makeText(this,"Error in deleting, Try Again",Toast.LENGTH_LONG).show();
+        }
+
+        //Change bottomsheet buttons
+        setBtnState = 0;
+        setBtn.setText("TYPE DESTINATION LOCATION");
+        setBtn.setBackgroundColor(Color.parseColor("#FFFFFF"));
+        setBtn.setTextColor(Color.parseColor("#CCCCCC"));
+        mbottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+    }
+
+
+    private void renderAlarmSetState(){
+
+        Log.d(TAG,"Render alarm set state");
+
+        mMap.addMarker(new MarkerOptions().position(destinationCoordinates)
+                .title(destinationAddress)
+                .draggable(true));
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(destinationCoordinates, zoomLevel));
+
+        drawBorder();
+        finishAlarm();
+    }
 
     @Override
     protected void onStart() {

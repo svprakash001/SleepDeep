@@ -19,6 +19,9 @@ public class MySQLiteHelper extends SQLiteOpenHelper {
     private static final String TABLE_CREATE = "create table " + AlarmLocationContract.AlarmDetails.TABLE_NAME + " ( "
             + AlarmLocationContract.AlarmDetails._ID + " integer primary key autoincrement, "
             + AlarmLocationContract.AlarmDetails.COLUMN_NAME_TARGET_ADDRESS + " text not null, "
+            + AlarmLocationContract.AlarmDetails.COLUMN_NAME_LAT + " text not null,"
+            + AlarmLocationContract.AlarmDetails.COLUMN_NAME_LONG + " text not null,"
+            + AlarmLocationContract.AlarmDetails.COLUMN_NAME_RADIUS + " integer not null,"
             + AlarmLocationContract.AlarmDetails.COLUMN_NAME_REQUEST_ID + " text not null);";
 
 

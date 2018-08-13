@@ -22,6 +22,9 @@ public final class AlarmLocationContract {
         public static final String TABLE_NAME = "ALARM_DETAILS";
         public static final String COLUMN_NAME_TARGET_ADDRESS  = "TARGET_ADDRESS";
         public static final String COLUMN_NAME_REQUEST_ID = "REQUEST_ID";
+        public static final String COLUMN_NAME_LAT = "LATITUDE";
+        public static final String COLUMN_NAME_LONG = "LONGITUDE";
+        public static final String COLUMN_NAME_RADIUS = "RADIUS";
     }
 
 }

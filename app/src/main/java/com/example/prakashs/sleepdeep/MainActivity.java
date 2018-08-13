@@ -1,24 +1,21 @@
 package com.example.prakashs.sleepdeep;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.View;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
-
-
 
     private String TAG = MainActivity.class.getSimpleName();
 
@@ -43,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             public void onClick(View view) {
 
                 Intent intent = new Intent(MainActivity.this,MapsActivity.class);
+                intent.putExtra("TYPE","new_alarm");
                 startActivity(intent);
 
             }
@@ -114,13 +112,29 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         Cursor cursor = (Cursor) parent.getItemAtPosition(position);
 
-        String address = cursor.getString(cursor.getColumnIndex(AlarmLocationContract.AlarmDetails.COLUMN_NAME_TARGET_ADDRESS));
+        String req_id = cursor.getString(
+                cursor.getColumnIndex(AlarmLocationContract.AlarmDetails.COLUMN_NAME_REQUEST_ID));
+        String lat = cursor.getString(
+                cursor.getColumnIndex(AlarmLocationContract.AlarmDetails.COLUMN_NAME_LAT));
+        String lon = cursor.getString(
+                cursor.getColumnIndex(AlarmLocationContract.AlarmDetails.COLUMN_NAME_LONG));
+        int radius = cursor.getInt(
+                cursor.getColumnIndex(AlarmLocationContract.AlarmDetails.COLUMN_NAME_RADIUS));
+        String address = cursor.getString(
+                cursor.getColumnIndex(AlarmLocationContract.AlarmDetails.COLUMN_NAME_TARGET_ADDRESS));
 
-        Intent intent1 = new Intent(MainActivity.this,MapsActivity.class);
+        Log.d(TAG,"The req_id is "+req_id);
 
-        intent1.putExtra("ADDRESS",address);
+        Intent intent = new Intent(MainActivity.this,MapsActivity.class);
 
-        startActivity(intent1);
+        intent.putExtra("TYPE","existing_alarm");
+        intent.putExtra("REQ_ID",req_id);
+        intent.putExtra("LAT",lat);
+        intent.putExtra("LON",lon);
+        intent.putExtra("RADIUS",radius);
+        intent.putExtra("ADDRESS",address);
+
+        startActivity(intent);
 
     }
 }
